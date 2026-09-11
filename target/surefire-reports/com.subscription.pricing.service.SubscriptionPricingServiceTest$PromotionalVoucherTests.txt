@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.subscription.pricing.service.SubscriptionPricingServiceTest$PromotionalVoucherTests
+-------------------------------------------------------------------------------
+Tests run: 35, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.179 s -- in com.subscription.pricing.service.SubscriptionPricingServiceTest$PromotionalVoucherTests

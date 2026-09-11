@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.subscription.pricing.service.SubscriptionPricingServiceTest
+-------------------------------------------------------------------------------
+Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.242 s -- in com.subscription.pricing.service.SubscriptionPricingServiceTest
