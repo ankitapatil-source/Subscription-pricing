@@ -473,4 +473,76 @@ class SubscriptionPricingServiceTest {
             verifyNoMoreInteractions(mockVoucherRepo);
         }
     }
+
+    // =========================================================================
+    // 8. Adversarial Edge Case Expansion (Task 5)
+    // =========================================================================
+    @Nested
+    @DisplayName("8. Adversarial Edge Case Expansion")
+    class AdversarialEdgeCaseTests {
+
+        @Test
+        @DisplayName("Edge Case 1: Voucher with expiryDate equal to today is valid (inclusive expiration)")
+        void voucherExpiringTodayIsStillValid() {
+            LocalDate today = LocalDate.now();
+            Voucher expiringToday = new Voucher("TODAY15", VoucherType.FLAT, new BigDecimal("15.00"), today);
+            voucherRepository.save(expiringToday);
+
+            BigDecimal price = service.calculatePrice(SubscriptionTier.BASIC, 0, "TODAY15");
+            assertThat(price).isEqualByComparingTo("35.00");
+        }
+
+        @ParameterizedTest(name = "Over-discount {0} at {1} months with voucher {2} -> floor $0.00")
+        @CsvSource({
+                "BASIC, 0, 50.00, 0.00",
+                "BASIC, 0, 100.00, 0.00",
+                "BASIC, 15, 60.00, 0.00",
+                "PRO, 0, 200.00, 0.00",
+                "PRO, 40, 150.00, 0.00",
+                "ENTERPRISE, 0, 10000.00, 0.00"
+        })
+        @DisplayName("Edge Case 2: Extreme over-discounts strictly floor to exactly $0.00 across all tiers")
+        void extremeOverDiscountsStrictlyFloorToZero(SubscriptionTier tier, int months, BigDecimal voucherAmount, String expectedPrice) {
+            String code = "MEGA_" + voucherAmount.intValue();
+            voucherRepository.save(new Voucher(code, VoucherType.FLAT, voucherAmount));
+
+            BigDecimal price = service.calculatePrice(tier, months, code);
+            assertThat(price).isEqualByComparingTo(expectedPrice);
+            assertThat(price.scale()).isEqualTo(2);
+            assertThat(price).isGreaterThanOrEqualTo(BigDecimal.ZERO);
+        }
+
+        @ParameterizedTest(name = "Extreme longevity {0} at {1} months -> 25% discount")
+        @CsvSource({
+                "BASIC, 1200, 37.50",
+                "PRO, 1200, 112.50",
+                "ENTERPRISE, 1200, 375.00",
+                "BASIC, 2147483647, 37.50",
+                "ENTERPRISE, 2147483647, 375.00"
+        })
+        @DisplayName("Edge Case 3: Extreme longevity and Integer.MAX_VALUE safely apply maximum 25% tier without overflow")
+        void extremeLongevityDoesNotOverflow(SubscriptionTier tier, int months, String expectedPrice) {
+            BigDecimal price = service.calculatePrice(tier, months);
+            assertThat(price).isEqualByComparingTo(expectedPrice);
+            assertThat(price.scale()).isEqualTo(2);
+        }
+
+        @ParameterizedTest(name = "Percentage voucher rate {0} -> expected price {1}")
+        @CsvSource({
+                "0.00, 50.00",
+                "0.50, 25.00",
+                "1.00, 0.00",
+                "1.50, 0.00"
+        })
+        @DisplayName("Edge Case 4: Zero, 100%, and over-100% percentage vouchers compute accurately without negative numbers")
+        void percentageVoucherBoundaries(BigDecimal discountRate, String expectedPrice) {
+            String code = "PCT_" + discountRate.toString().replace('.', '_');
+            voucherRepository.save(new Voucher(code, VoucherType.PERCENTAGE, discountRate));
+
+            BigDecimal price = service.calculatePrice(SubscriptionTier.BASIC, 0, code);
+            assertThat(price).isEqualByComparingTo(expectedPrice);
+            assertThat(price.scale()).isEqualTo(2);
+            assertThat(price).isGreaterThanOrEqualTo(BigDecimal.ZERO);
+        }
+    }
 }
