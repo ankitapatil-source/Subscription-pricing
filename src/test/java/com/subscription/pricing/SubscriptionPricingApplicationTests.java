@@ -19,9 +19,15 @@ class SubscriptionPricingApplicationTests {
     private SubscriptionPricingService pricingService;
 
     @Test
-    @DisplayName("Context loads and SubscriptionPricingService is autowired successfully")
+    @DisplayName("Context loads and SubscriptionPricingService is autowired and operational")
     void contextLoads() {
-        assertThat(pricingService).isNotNull();
+        assertThat(pricingService)
+                .as("SubscriptionPricingService bean must be successfully injected into ApplicationContext")
+                .isNotNull();
+        BigDecimal defaultRate = pricingService.calculatePrice(SubscriptionTier.BASIC, 0);
+        assertThat(defaultRate)
+                .as("Injected service must be operational and return exact base rate")
+                .isEqualByComparingTo("50.00");
     }
 
     @Test

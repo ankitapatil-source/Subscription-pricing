@@ -49,3 +49,21 @@ You are a Senior QA Automation Engineer and Test Architect specializing in Test-
 - Command executed: `mvn clean test`
 - Result: Compilation Failure (`cannot find symbol: class SubscriptionPricingService`)
 - Status: **RED state confirmed.**
+
+---
+
+## Task 2 — Critique & Audit AI-Generated Tests
+
+### 1. AI Test Audit Matrix & Identified Flaws
+
+| # | Flaw Category | Location | Identified Anti-Pattern / Issue | Corrective Fix Applied |
+|---|---|---|---|---|
+| **1** | **Weak / Ambiguous Assertion** | `SubscriptionPricingServiceTest.java:187-194` (`voucherCodesAreCaseInsensitiveAndTrimmed`) | Used `assertThat(price).isIn("30.00", "25.00")`. If `save20` returned 25.00 or `halfprice` returned 30.00, test would still pass falsely. | Converted `@ValueSource` to `@CsvSource` with explicit 1:1 input-to-expected mapping, asserting exact price and scale of 2. |
+| **2** | **Incomplete Assertion (Scale Only)** | `SubscriptionPricingServiceTest.java:290-300` (`halfUpRoundingWithOddCentFraction`) | Tested odd fractional cents but only checked `assertThat(price.scale()).isEqualTo(2)`. A stub returning `0.00` would pass. | Added explicit currency amount assertion: `assertThat(price).isEqualByComparingTo("33.33")` alongside scale check. |
+| **3** | **Weak Assertion (`assertNotNull`)** | `SubscriptionPricingApplicationTests.java:21-26` (`contextLoads`) | Used basic `assertThat(pricingService).isNotNull()`, which only tests DI instantiation without validating runtime behavior. | Strengthened to assert operational contract execution: calling `calculatePrice(BASIC, 0)` and checking exact rate `$50.00`. |
+| **4** | **Missing Interaction Boundaries** | `SubscriptionPricingServiceTest.java:406-465` (`MockitoUnitTests`) | Mock tests verified expected calls but omitted `verifyNoMoreInteractions()`, allowing unintended repo calls. | Added `verifyNoMoreInteractions(mockVoucherRepo)` across all mock test methods to enforce strict interaction contracts. |
+
+### 2. Failing Test Runner Verification After Audit
+- Command executed: `mvn clean test`
+- Result: Compilation Failure (`cannot find symbol: class SubscriptionPricingService`)
+- Status: Confirmed tests continue failing cleanly for missing SUT implementation, not test syntax or improper assertions.
