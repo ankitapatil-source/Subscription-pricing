@@ -4,7 +4,6 @@ import com.subscription.pricing.exception.InvalidVoucherException;
 import com.subscription.pricing.model.PricingResult;
 import com.subscription.pricing.model.SubscriptionTier;
 import com.subscription.pricing.model.Voucher;
-import com.subscription.pricing.model.VoucherType;
 import com.subscription.pricing.repository.InMemoryVoucherRepository;
 import com.subscription.pricing.repository.VoucherRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +19,7 @@ import java.util.Objects;
  * Production-grade service responsible for processing subscription tier rates,
  * applying longevity discounts, promotional voucher codes, and enforcing
  * rounding and zero-floor constraints.
+ * Refactored using modern Java 17 switch expressions and records.
  */
 @Service
 public class SubscriptionPricingService {
@@ -83,8 +83,7 @@ public class SubscriptionPricingService {
      * @throws InvalidVoucherException  if the voucher code is unrecognized or expired
      */
     public BigDecimal calculatePrice(SubscriptionTier tier, int activeMonths, String voucherCode) {
-        PricingResult result = calculateDetailedPrice(tier, activeMonths, voucherCode);
-        return result.getFinalPrice();
+        return calculateDetailedPrice(tier, activeMonths, voucherCode).finalPrice();
     }
 
     /**
@@ -114,6 +113,7 @@ public class SubscriptionPricingService {
 
     /**
      * Computes the detailed, itemized breakdown of the pricing calculation.
+     * Refactored using Java 17 pattern matching and switch expressions.
      *
      * @param tier         subscription tier (BASIC, PRO, ENTERPRISE)
      * @param activeMonths number of months the account has been active
@@ -132,17 +132,8 @@ public class SubscriptionPricingService {
 
         BigDecimal baseRate = tier.getBasePrice().setScale(2, RoundingMode.HALF_UP);
 
-        // 1. Determine longevity discount percentage:
-        // Accounts active for > 36 months receive a 25% discount
-        // Accounts active for > 12 months receive a 10% discount
-        BigDecimal longevityDiscountPercentage;
-        if (activeMonths > 36) {
-            longevityDiscountPercentage = TWENTY_FIVE_PERCENT;
-        } else if (activeMonths > 12) {
-            longevityDiscountPercentage = TEN_PERCENT;
-        } else {
-            longevityDiscountPercentage = ZERO_PERCENT;
-        }
+        // 1. Resolve longevity discount percentage via clean pattern
+        BigDecimal longevityDiscountPercentage = resolveLongevityDiscountPercentage(activeMonths);
 
         BigDecimal longevityDiscountAmount = baseRate
                 .multiply(longevityDiscountPercentage)
@@ -152,9 +143,9 @@ public class SubscriptionPricingService {
                 .subtract(longevityDiscountAmount)
                 .setScale(2, RoundingMode.HALF_UP);
 
-        // 2. Evaluate promotional voucher code
-        String normalizedVoucherCode = (voucherCode != null && !voucherCode.trim().isEmpty())
-                ? voucherCode.trim().toUpperCase()
+        // 2. Evaluate promotional voucher code using modern Java 17 switch expression
+        String normalizedVoucherCode = (voucherCode != null && !voucherCode.isBlank())
+                ? voucherCode.strip().toUpperCase()
                 : null;
 
         BigDecimal voucherDiscountAmount = ZERO_DOLLARS;
@@ -169,26 +160,21 @@ public class SubscriptionPricingService {
                 throw new InvalidVoucherException("Voucher is expired: " + voucherCode);
             }
 
-            if (voucher.getType() == VoucherType.FLAT) {
-                // "SAVE20" deducts an additional $20.00 flat fee after percentage discounts
-                voucherDiscountAmount = voucher.getValue().setScale(2, RoundingMode.HALF_UP);
-                calculatedPrice = rateAfterLongevityDiscount.subtract(voucherDiscountAmount);
-            } else if (voucher.getType() == VoucherType.PERCENTAGE) {
-                // "HALFPRICE" reduces the calculated rate by 50% (applied after longevity discounts)
-                voucherDiscountAmount = rateAfterLongevityDiscount
+            // Java 17 enhanced switch expression replacing procedural if-else statements
+            voucherDiscountAmount = switch (voucher.getType()) {
+                case FLAT -> voucher.getValue().setScale(2, RoundingMode.HALF_UP);
+                case PERCENTAGE -> rateAfterLongevityDiscount
                         .multiply(voucher.getValue())
                         .setScale(2, RoundingMode.HALF_UP);
-                calculatedPrice = rateAfterLongevityDiscount.subtract(voucherDiscountAmount);
-            }
+            };
+
+            calculatedPrice = rateAfterLongevityDiscount.subtract(voucherDiscountAmount);
         }
 
-        // 3. Rounding & Floor Rule:
-        // - Final monthly total cannot drop below $0.00
-        // - Currency math must be rounded accurately to two decimal places (half-up rounding)
-        BigDecimal finalPrice = calculatedPrice.setScale(2, RoundingMode.HALF_UP);
-        if (finalPrice.compareTo(ZERO_DOLLARS) < 0) {
-            finalPrice = ZERO_DOLLARS;
-        }
+        // 3. Enforce Rounding & Zero-Floor Rule using BigDecimal.max
+        BigDecimal finalPrice = calculatedPrice
+                .setScale(2, RoundingMode.HALF_UP)
+                .max(ZERO_DOLLARS);
 
         return new PricingResult(
                 tier,
@@ -201,5 +187,21 @@ public class SubscriptionPricingService {
                 voucherDiscountAmount,
                 finalPrice
         );
+    }
+
+    /**
+     * Resolves the longevity discount percentage based on active account months.
+     *
+     * @param activeMonths active months on account
+     * @return discount percentage BigDecimal
+     */
+    private BigDecimal resolveLongevityDiscountPercentage(int activeMonths) {
+        if (activeMonths > 36) {
+            return TWENTY_FIVE_PERCENT;
+        }
+        if (activeMonths > 12) {
+            return TEN_PERCENT;
+        }
+        return ZERO_PERCENT;
     }
 }
