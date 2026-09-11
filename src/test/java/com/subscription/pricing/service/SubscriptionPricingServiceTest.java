@@ -29,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @DisplayName("SubscriptionPricingService Unit Tests")
@@ -184,12 +185,19 @@ class SubscriptionPricingServiceTest {
             assertThat(price).isEqualByComparingTo(expected);
         }
 
-        @ParameterizedTest(name = "Voucher code format: {0}")
-        @ValueSource(strings = {"save20", " SAVE20 ", "SaVe20", "  halfprice  ", "HALFPRICE"})
-        @DisplayName("Voucher codes are case-insensitive and trim leading/trailing whitespace")
-        void voucherCodesAreCaseInsensitiveAndTrimmed(String voucherCode) {
+        @ParameterizedTest(name = "Voucher code format: ''{0}'' -> {1}")
+        @CsvSource({
+                "'save20', 30.00",
+                "' SAVE20 ', 30.00",
+                "'SaVe20', 30.00",
+                "'  halfprice  ', 25.00",
+                "'HALFPRICE', 25.00"
+        })
+        @DisplayName("Voucher codes are case-insensitive and trim leading/trailing whitespace with exact price mapping")
+        void voucherCodesAreCaseInsensitiveAndTrimmed(String voucherCode, String expected) {
             BigDecimal price = service.calculatePrice(SubscriptionTier.BASIC, 0, voucherCode);
-            assertThat(price).isIn(new BigDecimal("30.00"), new BigDecimal("25.00"));
+            assertThat(price).isEqualByComparingTo(expected);
+            assertThat(price.scale()).isEqualTo(2);
         }
 
         @Test
@@ -286,15 +294,15 @@ class SubscriptionPricingServiceTest {
         }
 
         @Test
-        @DisplayName("Half-up rounding with odd cent fraction rounds up")
+        @DisplayName("Half-up rounding with odd cent fraction rounds accurately to nearest cent")
         void halfUpRoundingWithOddCentFraction() {
-            // Custom 33% discount voucher on $100.00 base rate:
-            // Let's create a custom percentage voucher with 33.333% discount
+            // Base BASIC rate $50.00 with custom 33.335% discount:
+            // 50.00 * 0.33335 = 16.6675 discount -> Net = 33.3325 -> Rounds half-up to 33.33
             Voucher thirdVoucher = new Voucher("THIRD", VoucherType.PERCENTAGE, new BigDecimal("0.33335"));
             voucherRepository.save(thirdVoucher);
 
-            // $50.00 * 0.33335 = 16.6675 -> subtract from $50.00 -> 33.3325 -> half-up rounds to 33.33
             BigDecimal price = service.calculatePrice(SubscriptionTier.BASIC, 0, "THIRD");
+            assertThat(price).isEqualByComparingTo("33.33");
             assertThat(price.scale()).isEqualTo(2);
         }
     }
@@ -423,6 +431,7 @@ class SubscriptionPricingServiceTest {
 
             assertThat(price).isEqualByComparingTo("40.00");
             verify(mockVoucherRepo).findByCode("PROMO10");
+            verifyNoMoreInteractions(mockVoucherRepo);
         }
 
         @Test
@@ -446,6 +455,7 @@ class SubscriptionPricingServiceTest {
                     .hasMessageContaining("Voucher is expired: SPRING50");
 
             verify(mockVoucherRepo).findByCode("SPRING50");
+            verifyNoMoreInteractions(mockVoucherRepo);
         }
 
         @Test
@@ -460,6 +470,7 @@ class SubscriptionPricingServiceTest {
                     .hasMessageContaining("Invalid voucher code: NOTFOUND");
 
             verify(mockVoucherRepo).findByCode("NOTFOUND");
+            verifyNoMoreInteractions(mockVoucherRepo);
         }
     }
 }
