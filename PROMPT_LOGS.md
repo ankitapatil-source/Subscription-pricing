@@ -124,3 +124,42 @@ Implement the minimal production code for `SubscriptionPricingService` in packag
   [INFO] ------------------------------------------------------------------------
   ```
 - Status: **GREEN state confirmed. 100% test pass rate achieved with zero test alterations.**
+
+---
+
+## Task 4 — Refactor Safely Under Test Shield (REFACTOR Phase)
+
+### 1. AI Refactoring Prompt Submitted
+
+```text
+[ROLE]
+You are a Principal Software Architect specializing in Modern Java (Java 17 LTS), Clean Code, and Software Design Patterns.
+
+[TASK]
+Refactor the procedural logic in `SubscriptionPricingService.java` and `PricingResult.java` using modern Java 17 language features while operating under the safety net of our existing 87 unit tests. Ensure zero behavioral regressions.
+
+[REFACTORING GOALS]
+1. Replace procedural if-else voucher branching with modern Java 17 enhanced switch expressions (`switch (voucher.getType())`).
+2. Convert the boilerplate `PricingResult` class into an immutable Java 17 `record`, maintaining backward-compatible JavaBean getter aliases for framework interoperability.
+3. Extract longevity discount percentage resolution into a dedicated, clean helper method (`resolveLongevityDiscountPercentage`).
+4. Modernize string validation using `String.isBlank()` and `String.strip()`.
+5. Enforce zero-floor logic idiomatic to `BigDecimal` using `.max(ZERO_DOLLARS)`.
+```
+
+### 2. Multi-File Refactoring Summary
+- **`PricingResult.java`**: Converted to a Java 17 `record`, eliminating 80+ lines of boilerplate constructor, `equals`, `hashCode`, and `toString` while preserving full JavaBean compatibility.
+- **`SubscriptionPricingService.java`**: Replaced procedural conditionals with Java 17 switch expression, extracted longevity resolution, and utilized `BigDecimal.max(ZERO_DOLLARS)`.
+
+### 3. Verification: Passing Test Runner Output (Zero Regressions)
+- Command executed: `mvn clean test`
+- Results:
+  ```
+  [INFO] Results:
+  [INFO] 
+  [INFO] Tests run: 87, Failures: 0, Errors: 0, Skipped: 0
+  [INFO] 
+  [INFO] ------------------------------------------------------------------------
+  [INFO] BUILD SUCCESS
+  [INFO] ------------------------------------------------------------------------
+  ```
+- Status: **Zero test regressions. All 87 tests passed cleanly under the refactored implementation.**
