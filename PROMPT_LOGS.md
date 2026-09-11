@@ -67,3 +67,60 @@ You are a Senior QA Automation Engineer and Test Architect specializing in Test-
 - Command executed: `mvn clean test`
 - Result: Compilation Failure (`cannot find symbol: class SubscriptionPricingService`)
 - Status: Confirmed tests continue failing cleanly for missing SUT implementation, not test syntax or improper assertions.
+
+---
+
+## Task 3 — Implement Against Tests (GREEN Phase)
+
+### 1. AI Implementation Prompt Submitted
+
+```text
+[ROLE]
+You are a Senior Backend Software Engineer specializing in Java 17, Spring Boot 3 microservices, and Clean Architecture.
+
+[TASK]
+Implement the minimal production code for `SubscriptionPricingService` in package `com.subscription.pricing.service` to make 100% of the audited failing tests pass cleanly. Do not alter any existing unit tests.
+
+[SPECIFICATION DERIVED FROM AUDITED TESTS]
+1. Target Class:
+   - Name: `SubscriptionPricingService`
+   - Package: `com.subscription.pricing.service`
+   - Spring Annotation: `@Service`
+2. Constructors:
+   - Default no-args constructor initializing `InMemoryVoucherRepository` and `Clock.systemDefaultZone()`.
+   - Single-arg constructor taking `VoucherRepository`.
+   - `@Autowired` constructor taking `(VoucherRepository voucherRepository, Clock clock)`.
+3. Methods & Overloads:
+   - `BigDecimal calculatePrice(SubscriptionTier tier, int activeMonths)`
+   - `BigDecimal calculatePrice(SubscriptionTier tier, int activeMonths, String voucherCode)`
+   - `BigDecimal calculateMonthlyPrice(SubscriptionTier tier, int activeMonths)` (alias)
+   - `BigDecimal calculateMonthlyPrice(SubscriptionTier tier, int activeMonths, String voucherCode)` (alias)
+   - `PricingResult calculateDetailedPrice(SubscriptionTier tier, int activeMonths)`
+   - `PricingResult calculateDetailedPrice(SubscriptionTier tier, int activeMonths, String voucherCode)`
+4. Business Rules & Logic:
+   - Tier base rates: BASIC ($50.00), PRO ($150.00), ENTERPRISE ($500.00).
+   - Longevity discount: <= 12 months (0%), 13-36 months (10%), > 36 months (25%).
+   - Longevity discount amount = baseRate * discountPercentage (HALF_UP, 2 decimals).
+   - Rate after longevity = baseRate - longevityDiscountAmount.
+   - Vouchers (case-insensitive, trimmed):
+     * SAVE20: Flat $20.00 reduction.
+     * HALFPRICE: 50% discount on rate after longevity.
+     * Expired or missing: throw `InvalidVoucherException`.
+     * Null or blank: apply $0.00 voucher discount.
+   - Floor & Rounding: Final price cannot drop below $0.00, formatted with scale 2 and `RoundingMode.HALF_UP`.
+   - Validations: Null tier throws `IllegalArgumentException`, negative activeMonths throws `IllegalArgumentException`.
+```
+
+### 2. Passing Test Runner Verification (GREEN State)
+- Command executed: `mvn clean test`
+- Results:
+  ```
+  [INFO] Results:
+  [INFO] 
+  [INFO] Tests run: 87, Failures: 0, Errors: 0, Skipped: 0
+  [INFO] 
+  [INFO] ------------------------------------------------------------------------
+  [INFO] BUILD SUCCESS
+  [INFO] ------------------------------------------------------------------------
+  ```
+- Status: **GREEN state confirmed. 100% test pass rate achieved with zero test alterations.**
