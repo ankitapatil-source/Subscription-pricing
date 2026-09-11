@@ -222,3 +222,15 @@ Brainstorm a comprehensive list of potential boundary flaws, race conditions, ed
   [INFO] ------------------------------------------------------------------------
   ```
 - Status: **All 103 tests (87 base + 16 adversarial edge-case tests) passed cleanly.**
+
+---
+
+## Task 6 — Written Reflection
+
+### 1. Written Reflection Artifact
+- **File**: `REFLECTION.md`
+- **Word Count**: 409 words (verified within required 300–500 word limit).
+- **Core Topics Addressed**:
+  1. *AI Productivity & Acceleration*: Rapid generation of parameterized tests, Mockito infrastructure, and modern Java 17 refactoring.
+  2. *AI Weak Logic & Anti-Patterns*: Ambiguous assertions (`isIn`), scale-only checks, weak `assertNotNull` validations, and missing mock boundaries.
+  3. *TDD Guardrails Against Technical Debt*: Executable machine specifications, minimal scope adherence under GREEN phase, and regression-free Java 17 modernization under the test shield.
