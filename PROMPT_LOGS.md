@@ -163,3 +163,62 @@ Refactor the procedural logic in `SubscriptionPricingService.java` and `PricingR
   [INFO] ------------------------------------------------------------------------
   ```
 - Status: **Zero test regressions. All 87 tests passed cleanly under the refactored implementation.**
+
+---
+
+## Task 5 — Adversarial Edge Case Expansion
+
+### 1. Adversarial QA Prompt Submitted to AI
+
+```text
+[ROLE]
+You are a Principal Adversarial QA Engineer specializing in financial billing engines, edge-case vulnerability testing, boundary analysis, and mission-critical payment services.
+
+[TASK]
+Brainstorm a comprehensive list of potential boundary flaws, race conditions, edge cases, and arithmetic vulnerabilities for `SubscriptionPricingService`. Select at least 4 non-trivial edge cases, implement them as parameterized JUnit 5 tests, and provide thorough engineering justifications for each.
+
+[BRAINSTORM TARGETS]
+- Zero-floor guarantees and extreme over-discount thresholds ($0.00 floor constraints).
+- Exact expiration date boundary semantics (same-day validity vs expired).
+- Numerical extremes, integer overflow, and extreme longevity values (e.g., Integer.MAX_VALUE).
+- Percentage discount edge cases (0%, 100%, >100% free passes).
+- Fractional-cent arithmetic rounding errors and half-up rounding guarantees.
+```
+
+### 2. AI Brainstorm List of Edge Cases
+1. **Inclusive Expiration Date Boundary**: Testing a voucher where `expiryDate == today` to guarantee coupons remain redeemable until the end of their expiration day.
+2. **Extreme Multi-Tier Over-Discounts**: Stacking massive flat vouchers ($100, $200, $1,000, $10,000) against low base rates (BASIC $50) with longevity discounts to verify strict $0.00 floor enforcement without negative-zero (`-0.00`) or sign errors.
+3. **Integer Overflow on Extreme Longevity**: Supplying `Integer.MAX_VALUE` (2,147,483,647 months) and multi-century active durations to prove calculations never overflow 32-bit integers or regress into incorrect tiers.
+4. **Percentage Voucher Boundaries (0%, 100%, >100%)**: Testing full free waivers (100% discount) and over-percentage promos (150%) to guarantee exact `$0.00` calculation without floating point drift or negative values.
+5. **Micro-Cent Half-Up Precision**: Validating odd fractional cents (e.g. 33.335%) across uneven discount combinations.
+6. **Whitespace & Control Character Tolerances**: Testing tab `\t` and newline `\n` padded voucher strings.
+7. **Cross-Tier Longevity Thresholds**: Testing exact boundary transitions (12 -> 13 months, 36 -> 37 months) across all three subscription tiers.
+
+### 3. Selected 4 Non-Trivial Edge Cases & Engineering Justifications
+
+1. **Edge Case 1: Same-Day Voucher Expiration Boundary (Inclusive Expiration Contract)**
+   - *Implementation:* `voucherExpiringTodayIsStillValid`
+   - *Engineering Justification:* In customer billing systems, voucher expiration dates represent inclusive validity ("valid through 23:59:59 of that date"). Using strict `isAfter()` prevents premature coupon revocation on the expiration date itself, preventing false rejections and checkout drop-offs.
+2. **Edge Case 2: Extreme Over-Discounts Flooring to Exactly $0.00 Across All Tiers**
+   - *Implementation:* `extremeOverDiscountsStrictlyFloorToZero`
+   - *Engineering Justification:* Negative totals in payment gateways trigger API rejection or accidental card refunds/credits. This test guarantees that no combination of base rates, longevity reductions, and outsized vouchers ($10,000) can ever produce an invoice total below `$0.00`.
+3. **Edge Case 3: Extreme Longevity Duration and Integer.MAX_VALUE Resilience**
+   - *Implementation:* `extremeLongevityDoesNotOverflow`
+   - *Engineering Justification:* Legacy account migrations or erroneous database values can pass astronomical active month counts. This test ensures the pricing logic handles maximum integer values (`2,147,483,647`) without signed arithmetic overflow or incorrect fallback to 0% discount.
+4. **Edge Case 4: Zero, 100%, and Over-100% Percentage Voucher Boundaries**
+   - *Implementation:* `percentageVoucherBoundaries`
+   - *Engineering Justification:* Promotional marketing campaigns frequently issue 100% trial passes ("FREEPASS") or stacked percentages. This test validates that 100% discount evaluates to exactly `$0.00` and >100% discount cleanly hits the `$0.00` floor without arithmetic aberrations.
+
+### 4. Verification: Passing Test Runner Output (Expanded Test Suite)
+- Command executed: `mvn clean test`
+- Results:
+  ```
+  [INFO] Results:
+  [INFO] 
+  [INFO] Tests run: 103, Failures: 0, Errors: 0, Skipped: 0
+  [INFO] 
+  [INFO] ------------------------------------------------------------------------
+  [INFO] BUILD SUCCESS
+  [INFO] ------------------------------------------------------------------------
+  ```
+- Status: **All 103 tests (87 base + 16 adversarial edge-case tests) passed cleanly.**
