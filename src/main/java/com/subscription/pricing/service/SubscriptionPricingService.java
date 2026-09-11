@@ -100,6 +100,7 @@ public class SubscriptionPricingService {
     public BigDecimal calculateMonthlyPrice(SubscriptionTier tier, int activeMonths, String voucherCode) {
         return calculatePrice(tier, activeMonths, voucherCode);
     }
+
     /**
      * Computes the detailed, itemized breakdown of the pricing calculation without vouchers.
      *
@@ -110,6 +111,7 @@ public class SubscriptionPricingService {
     public PricingResult calculateDetailedPrice(SubscriptionTier tier, int activeMonths) {
         return calculateDetailedPrice(tier, activeMonths, null);
     }
+
     /**
      * Computes the detailed, itemized breakdown of the pricing calculation.
      *
